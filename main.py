@@ -10,9 +10,9 @@ class ExcelIO:
     workbook: Workbook
     alphabet = list(chr(n) for n in range(65, 91))
 
-    def __init__(self, file_path=None):
+    def __init__(self, file_name=None):
         try:
-            self.workbook = pyxl.load_workbook(file_path)
+            self.workbook = pyxl.load_workbook(f'{file_name}.xlsx')
         finally:
             pass
         self.name = str
@@ -67,16 +67,30 @@ class ExcelIO:
                 except TypeError:
                     pass
                 finally:
-                    excel_data[r-2].append(val)
+                    excel_data[r - 2].append(val)
         return excel_data
 
 
 class SqlIO:
-    def __init__(self):
-        pass
+    def __init__(self, file_name):
+        self.file_name = file_name
+        self.file = open(f'{file_name}.sql', 'w')
+
+    def json_to_table_values(self, name, rows):
+        self.file.write(f'INSERT INTO {name} VALUES\n')
+        for row in rows:
+            self.file.write(str(tuple(row)).
+                            replace("None", 'NULL').
+                            replace("'NULL'", 'NULL'))
+            self.file.write(",\n" if row != rows[-1] else ";\n\n")
+
+    def close(self):
+        self.file.close()
 
 
 class JsonIO:
+
+    data: list[dict]
 
     def __init__(self, file_path):
         self.file_path = file_path
@@ -101,6 +115,35 @@ class JsonIO:
         self.file.write(json.dumps(self.data, sort_keys=False, indent=4))
         self.file.close()
 
+    def add_field(self, intended, external, *combination):
+        with open(self.file_path, 'r') as self.file:
+            self.data = json.load(self.file)
+        for n in range(len(self.data)):
+            placeholder = []
+            for combo in combination:
+                if self.data[n][combo] is None:
+                    continue
+                else:
+                    placeholder.append(self.data[n][combo])
+            print("PLACEHOLDER:",placeholder)
+            self.data[n][intended] = self.find_identical(intended, placeholder, external)
+        self.file = open(self.file_path, 'w', encoding="utf-8", errors="replace")
+        self.file.write(json.dumps(self.data, sort_keys=False, indent=4))
+        self.file.close()
+
+    @staticmethod
+    def find_identical(field, this_data, other_data):
+        for row in other_data:
+            found = True
+            for item in this_data:
+                # print(item)
+                if item not in row.values():
+                    found = False
+            if found:
+                print("FOUND?")
+                return row[field]
+
+
     def clear_entries(self):
         with open(self.file_path, 'w', encoding="utf-8", errors="replace") as self.file:
             self.file.write(json.dumps([], sort_keys=False, indent=4))
@@ -112,8 +155,53 @@ class JsonIO:
                 print("DATA:", self.data)
         except FileNotFoundError:
             print("NOT FOUND?")
-        print(self.data)
         return self.data
+
+    def get_keys(self):
+        with open(self.file_path, 'r') as self.file:
+            self.data = json.load(self.file)
+        print("KEYS")
+        return tuple(self.data[0])
+
+    def get_columns(self, *args, **kwargs):
+        cols = []
+        with open(self.file_path, 'r') as self.file:
+            self.data = json.load(self.file)
+        for dictionary in self.data:
+            cont = True
+            for flag, req in kwargs.items():
+                print("REQ:", dictionary[req], "| OK:",NONE_TYPES)
+                if flag == 'null':
+                    if dictionary[req] not in NONE_TYPES:
+                        cont = False
+                elif dictionary[req] in NONE_TYPES:
+                    cont = False
+                elif 'multi' in flag:
+                    norm_list = []
+                    mult_list = []
+                    for name in args:
+                        if name == req:
+                            mult_list = dictionary[req].replace(" ", "").split(',')
+                            print("MULTI:",mult_list)
+                        else:
+                            try:
+                                norm_list.append(dictionary[name])
+                            except KeyError:
+                                pass
+                    for item in mult_list:
+                        if 'index' in flag:
+                            cols.append(norm_list + [item, mult_list.index(item)])
+                        else:
+                            cols.append(norm_list + [item])
+                    cont = False
+
+            if not cont:
+                print("SKIPPING")
+                continue
+            cols.append([])
+            for name in args:
+                cols[-1].append(dictionary[name])
+        return cols
 
 
 json_data = {0: JsonIO("output/airplanes.json"),
@@ -123,7 +211,20 @@ json_data = {0: JsonIO("output/airplanes.json"),
              4: JsonIO("output/flights.json"),
              5: JsonIO("output/routes.json")}
 
+NONE_TYPES = (None, 'null', 'NULL', 'None')
+
+tables = (('person', 3, ('personID', 'first_name', 'last_name', 'locationID'), {}),
+          ('pilot', 3, ('personID', 'taxID', 'experience', 'flightID'), dict(req1="taxID")),
+          ('pilot_license', 3, ('personID', 'license_types'), dict(multi='license_types')),
+          ('passenger', 3, ('personID', 'miles', 'funds'), dict(null='taxID')),
+          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(multi_index='vacations')))
+
 if __name__ == '__main__':
-    spreadsheet = ExcelIO('data.xlsx')
+    spreadsheet = ExcelIO('data')
     for n in range(6):
         json_data[n].add_entries(spreadsheet.extract_data(n), spreadsheet.extract_headers(n))
+    json_data[3].add_field('flightID', json_data[4].get_entries(), 'flying_airline', 'flying_tail')
+    database = SqlIO('output')
+    for title, table, columns, reqs in tables:
+        database.json_to_table_values(title, json_data[table].get_columns(*columns, **reqs))
+    database.close()
