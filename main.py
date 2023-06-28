@@ -81,7 +81,8 @@ class SqlIO:
         for row in rows:
             self.file.write(str(tuple(row)).
                             replace("None", 'NULL').
-                            replace("'NULL'", 'NULL'))
+                            replace("'NULL'", 'NULL').
+                            replace(",)",")"))
             self.file.write(",\n" if row != rows[-1] else ";\n\n")
 
     def close(self):
@@ -170,12 +171,20 @@ class JsonIO:
         for dictionary in self.data:
             cont = True
             for flag, req in kwargs.items():
-                print("REQ:", dictionary[req], "| OK:",NONE_TYPES)
+                print("REQ:", dictionary[req if type(req) == str else req[0]], "| OK:",NONE_TYPES)
                 if flag == 'null':
                     if dictionary[req] not in NONE_TYPES:
                         cont = False
-                elif dictionary[req] in NONE_TYPES:
-                    cont = False
+                elif flag == 'unique':
+                    for row in cols:
+                        if dictionary[req] in row:
+                            cont = False
+                            break
+                elif 'equals' in flag:
+                    if dictionary[req[0]] != req[1]:
+                        cont = False
+                    else:
+                        print('Equals checks out.',dictionary[req[0]], req[1])
                 elif 'multi' in flag:
                     norm_list = []
                     mult_list = []
@@ -194,7 +203,8 @@ class JsonIO:
                         else:
                             cols.append(norm_list + [item])
                     cont = False
-
+                if dictionary[req if type(req) == str else req[0]] in NONE_TYPES:
+                    cont = False
             if not cont:
                 print("SKIPPING")
                 continue
@@ -217,7 +227,17 @@ tables = (('person', 3, ('personID', 'first_name', 'last_name', 'locationID'), {
           ('pilot', 3, ('personID', 'taxID', 'experience', 'flightID'), dict(req1="taxID")),
           ('pilot_license', 3, ('personID', 'license_types'), dict(multi='license_types')),
           ('passenger', 3, ('personID', 'miles', 'funds'), dict(null='taxID')),
-          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(multi_index='vacations')))
+          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(multi_index='vacations')),
+          ('airline', 0, ('airlineID', 'airline_revenue'), dict(unique='airlineID')),
+          ('flight', 4, ('flightID', 'cost', 'routeID', 'support_airline', 'support_tail', 'progress', 'airplane_status', 'next_time'), {}),
+          ('route', 5, ('routeID',), {}),
+          # IMPLEMENT FLIGHTS HERE
+          ('airport', 1, ('airportID', 'airport_name', 'city', 'state', 'country_code', 'locationID'), {}),
+          ('location', 2, ('locationID',), {}),
+          ('airplane', 0, ('airlineID', 'tail_num', 'seat_capacity', 'speed', 'locationID'), {}),
+          ('prop', 0, ('airlineID', 'tail_num', 'skids', 'props'), dict(equals=('plane_type', 'prop'))),
+          ('jet', 0, ('airlineID', 'tail_num', 'jets'), dict(equals=('plane_type', 'jet')))
+          ) # IMPLEMENT CONTAINS HERE
 
 if __name__ == '__main__':
     spreadsheet = ExcelIO('data')
