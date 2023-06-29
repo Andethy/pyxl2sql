@@ -171,9 +171,14 @@ class JsonIO:
             cont = True
             for flag, req in kwargs.items():
                 print("REQ:", dictionary[req if type(req) == str else req[0]], "| OK:", NONE_TYPES)
-                if flag == 'null':
+                if 'req' in flag:
+                    if dictionary[req if type(req) == str else req[0]] in NONE_TYPES:
+                        cont = False
+                        break
+                elif 'null' in flag:
                     if dictionary[req] not in NONE_TYPES:
                         cont = False
+                        break
                 elif flag == 'unique':
                     for row in cols:
                         if dictionary[req] in row:
@@ -236,8 +241,7 @@ class JsonIO:
                         else:
                             cols.append(norm_list + [*item])
                     cont = False
-                if dictionary[req if type(req) == str else req[0]] in NONE_TYPES:
-                    cont = False
+
             if not cont:
                 print("SKIPPING")
                 continue
@@ -258,13 +262,11 @@ NONE_TYPES = (None, 'null', 'NULL', 'None')
 
 tables = (('person', 3, ('personID', 'first_name', 'last_name', 'locationID'), {}),
           ('pilot', 3, ('personID', 'taxID', 'experience', 'flightID'), dict(req1="taxID")),
-          ('pilot_license', 3, ('personID', 'license_types'), dict(multi='license_types')),
+          ('pilot_license', 3, ('personID', 'license_types'), dict(req1="taxID", multi='license_types')),
           ('passenger', 3, ('personID', 'miles', 'funds'), dict(null='taxID')),
-          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(multi_index='vacations')),
+          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(null='taxID', multi_index='vacations')),
           ('airline', 0, ('airlineID', 'airline_revenue'), dict(unique='airlineID')),
-          ('flight', 4, (
-          'flightID', 'cost', 'routeID', 'support_airline', 'support_tail', 'progress', 'airplane_status', 'next_time'),
-           {}),
+          ('flight', 4, ('flightID', 'cost', 'routeID', 'support_airline', 'support_tail', 'progress', 'airplane_status', 'next_time'), {}),
           ('route', 5, ('routeID',), {}),
           ('leg', 5, ('legs', 'distance', 'arrives_at', 'departs_from'), dict(multi_special='legs')),
           ('airport', 1, ('airportID', 'airport_name', 'city', 'state', 'country_code', 'locationID'), {}),
