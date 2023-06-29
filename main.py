@@ -251,12 +251,12 @@ class JsonIO:
         return cols
 
 
-json_data = {0: JsonIO("output/airplanes.json"),
-             1: JsonIO("output/airports.json"),
-             2: JsonIO("output/locations.json"),
-             3: JsonIO("output/persons.json"),
-             4: JsonIO("output/flights.json"),
-             5: JsonIO("output/routes.json")}
+json_data = {0: JsonIO("output/json/airplanes.json"),
+             1: JsonIO("output/json/airports.json"),
+             2: JsonIO("output/json/locations.json"),
+             3: JsonIO("output/json/persons.json"),
+             4: JsonIO("output/json/flights.json"),
+             5: JsonIO("output/json/routes.json")}
 
 NONE_TYPES = (None, 'null', 'NULL', 'None')
 
@@ -281,7 +281,7 @@ if __name__ == '__main__':
     for n in range(6):
         json_data[n].add_entries(spreadsheet.extract_data(n), spreadsheet.extract_headers(n))
     json_data[3].add_field('flightID', json_data[4].get_entries(), 'flying_airline', 'flying_tail')
-    database = SqlIO('output')
+    database = SqlIO('output/output')
     for title, table, columns, reqs in tables:
         database.json_to_table_values(title, json_data[table].get_columns(*columns, **reqs))
     database.close()
