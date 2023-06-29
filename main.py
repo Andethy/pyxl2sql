@@ -264,7 +264,7 @@ tables = (('person', 3, ('personID', 'first_name', 'last_name', 'locationID'), {
           ('pilot', 3, ('personID', 'taxID', 'experience', 'flightID'), dict(req1="taxID")),
           ('pilot_license', 3, ('personID', 'license_types'), dict(req1="taxID", multi='license_types')),
           ('passenger', 3, ('personID', 'miles', 'funds'), dict(null='taxID')),
-          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(null='taxID', multi_index='vacations')),
+          ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(req='vacations', null='taxID', multi_index='vacations')),
           ('airline', 0, ('airlineID', 'airline_revenue'), dict(unique='airlineID')),
           ('flight', 4, ('flightID', 'cost', 'routeID', 'support_airline', 'support_tail', 'progress', 'airplane_status', 'next_time'), {}),
           ('route', 5, ('routeID',), {}),
@@ -274,7 +274,7 @@ tables = (('person', 3, ('personID', 'first_name', 'last_name', 'locationID'), {
           ('airplane', 0, ('airlineID', 'tail_num', 'seat_capacity', 'speed', 'locationID'), {}),
           ('prop', 0, ('airlineID', 'tail_num', 'skids', 'props'), dict(equals=('plane_type', 'prop'))),
           ('jet', 0, ('airlineID', 'tail_num', 'jets'), dict(equals=('plane_type', 'jet'))),
-          ('contains', 5, ('routeID', 'legs', 'sequence'), dict(multi_special_index='legs')))  # IMPLEMENT CONTAINS HERE
+          ('contains', 5, ('routeID', 'legs', 'sequence'), dict(multi_special_index='legs')))
 
 if __name__ == '__main__':
     spreadsheet = ExcelIO('data')
