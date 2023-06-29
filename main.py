@@ -3,6 +3,7 @@ import json
 import openpyxl as pyxl
 from openpyxl.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
+import re
 
 
 class ExcelIO:
@@ -82,7 +83,7 @@ class SqlIO:
             self.file.write(str(tuple(row)).
                             replace("None", 'NULL').
                             replace("'NULL'", 'NULL').
-                            replace(",)",")"))
+                            replace(",)", ")"))
             self.file.write(",\n" if row != rows[-1] else ";\n\n")
 
     def close(self):
@@ -90,7 +91,6 @@ class SqlIO:
 
 
 class JsonIO:
-
     data: list[dict]
 
     def __init__(self, file_path):
@@ -126,7 +126,7 @@ class JsonIO:
                     continue
                 else:
                     placeholder.append(self.data[n][combo])
-            print("PLACEHOLDER:",placeholder)
+            print("PLACEHOLDER:", placeholder)
             self.data[n][intended] = self.find_identical(intended, placeholder, external)
         self.file = open(self.file_path, 'w', encoding="utf-8", errors="replace")
         self.file.write(json.dumps(self.data, sort_keys=False, indent=4))
@@ -143,7 +143,6 @@ class JsonIO:
             if found:
                 print("FOUND?")
                 return row[field]
-
 
     def clear_entries(self):
         with open(self.file_path, 'w', encoding="utf-8", errors="replace") as self.file:
@@ -171,7 +170,7 @@ class JsonIO:
         for dictionary in self.data:
             cont = True
             for flag, req in kwargs.items():
-                print("REQ:", dictionary[req if type(req) == str else req[0]], "| OK:",NONE_TYPES)
+                print("REQ:", dictionary[req if type(req) == str else req[0]], "| OK:", NONE_TYPES)
                 if flag == 'null':
                     if dictionary[req] not in NONE_TYPES:
                         cont = False
@@ -184,24 +183,58 @@ class JsonIO:
                     if dictionary[req[0]] != req[1]:
                         cont = False
                     else:
-                        print('Equals checks out.',dictionary[req[0]], req[1])
+                        print('Equals checks out.', dictionary[req[0]], req[1])
                 elif 'multi' in flag:
                     norm_list = []
                     mult_list = []
                     for name in args:
                         if name == req:
                             mult_list = dictionary[req].replace(" ", "").split(',')
-                            print("MULTI:",mult_list)
+                            print("MULTI:", mult_list)
+
                         else:
                             try:
+                                norm_list.append(int(dictionary[name]))
+                            except TypeError:
+                                norm_list.append(dictionary[name])
+                            except ValueError:
                                 norm_list.append(dictionary[name])
                             except KeyError:
                                 pass
-                    for item in mult_list:
-                        if 'index' in flag:
-                            cols.append(norm_list + [item, mult_list.index(item)])
+                    for loc, item in enumerate(mult_list):
+                        try:
+                            item = int(item)
+                        except ValueError or TypeError:
+                            pass
+                        if 'special' in flag:
+                            temp = []
+                            item = re.split(':|-->|mi', item)
+                            temp2 = []
+                            multi_count = len(args) - args.index(req) - (1 if 'index' in flag else 0)
+                            for n in range(multi_count):
+                                temp2.append(item[n])
+                            item = temp2
+                            print("SPLIT:", item)
+                            for sub in item:
+                                try:
+                                    sub = int(sub)
+                                except ValueError or TypeError:
+                                    pass
+                                temp.append(sub)
+                            item = temp
                         else:
-                            cols.append(norm_list + [item])
+                            item = [item]
+                        is_unique = True
+                        if 'special' in flag:
+                            for col in cols:
+                                if col[0] == item[0]:
+                                    is_unique = False
+                        if not is_unique:
+                            continue
+                        if 'index' in flag:
+                            cols.append(norm_list + [*item, loc])
+                        else:
+                            cols.append(norm_list + [*item])
                     cont = False
                 if dictionary[req if type(req) == str else req[0]] in NONE_TYPES:
                     cont = False
@@ -229,15 +262,17 @@ tables = (('person', 3, ('personID', 'first_name', 'last_name', 'locationID'), {
           ('passenger', 3, ('personID', 'miles', 'funds'), dict(null='taxID')),
           ('passenger_vacation', 3, ('personID', 'vacations', 'sequence'), dict(multi_index='vacations')),
           ('airline', 0, ('airlineID', 'airline_revenue'), dict(unique='airlineID')),
-          ('flight', 4, ('flightID', 'cost', 'routeID', 'support_airline', 'support_tail', 'progress', 'airplane_status', 'next_time'), {}),
+          ('flight', 4, (
+          'flightID', 'cost', 'routeID', 'support_airline', 'support_tail', 'progress', 'airplane_status', 'next_time'),
+           {}),
           ('route', 5, ('routeID',), {}),
-          # IMPLEMENT FLIGHTS HERE
+          ('leg', 5, ('legs', 'distance', 'arrives_at', 'departs_from'), dict(multi_special='legs')),
           ('airport', 1, ('airportID', 'airport_name', 'city', 'state', 'country_code', 'locationID'), {}),
           ('location', 2, ('locationID',), {}),
           ('airplane', 0, ('airlineID', 'tail_num', 'seat_capacity', 'speed', 'locationID'), {}),
           ('prop', 0, ('airlineID', 'tail_num', 'skids', 'props'), dict(equals=('plane_type', 'prop'))),
-          ('jet', 0, ('airlineID', 'tail_num', 'jets'), dict(equals=('plane_type', 'jet')))
-          ) # IMPLEMENT CONTAINS HERE
+          ('jet', 0, ('airlineID', 'tail_num', 'jets'), dict(equals=('plane_type', 'jet'))),
+          ('contains', 5, ('routeID', 'legs', 'sequence'), dict(multi_special_index='legs')))  # IMPLEMENT CONTAINS HERE
 
 if __name__ == '__main__':
     spreadsheet = ExcelIO('data')
