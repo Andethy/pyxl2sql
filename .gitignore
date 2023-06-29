@@ -230,3 +230,10 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 
+/output/output.sql
+/output/json/routes.json
+/output/json/airplanes.json
+/output/json/airports.json
+/output/json/flights.json
+/output/json/locations.json
+/output/json/persons.json
