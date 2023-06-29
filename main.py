@@ -109,6 +109,8 @@ class JsonIO:
             entry = {}
             for index, key in enumerate(keys):
                 print(key, txt_input[index])
+                if txt_input[index] in NONE_TYPES:
+                    txt_input[index] = None
                 entry[key] = txt_input[index]
             self.data.append(entry)
 
